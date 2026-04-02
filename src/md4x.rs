@@ -86,16 +86,18 @@ fn cleanup_ansi(text: &str) -> String {
                 }
             }
 
-            // Skip dim on
+            // Dim on → replace with muted gray
             if seq == "\x1b[2m" {
                 in_dim = true;
+                result.push_str("\x1b[38;5;245m"); // gray
                 continue;
             }
             // \x1b[22m = bold off AND dim off
             if seq == "\x1b[22m" {
                 if in_dim {
                     in_dim = false;
-                    continue; // was closing dim, skip
+                    result.push_str("\x1b[0m"); // reset gray
+                    continue;
                 }
                 // Was closing bold → use full reset
                 result.push_str("\x1b[0m");
