@@ -15,6 +15,20 @@ Interactive TUI for [mask](https://github.com/jacobdeichert/mask) — browse and
 
 ## Install
 
+### Nix
+
+```bash
+# Try it
+nix run github:ManUtopiK/maski
+
+# Install in your profile
+nix profile install github:ManUtopiK/maski
+```
+
+Or add it as a flake input in your NixOS/home-manager configuration.
+
+### Cargo
+
 ```bash
 cargo install maski
 ```
