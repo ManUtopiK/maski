@@ -62,12 +62,15 @@ pub fn render_ansi(markdown: &str) -> String {
     cleanup_ansi(&text)
 }
 
-/// Clean up ANSI codes for better rendering in skim preview:
-/// - Remove dim (\x1b[2m) which renders poorly in some terminals
-/// - Remove background colors (\x1b[4Xm, \x1b[48;...m)
+/// Clean up ANSI codes for skim preview compatibility:
+/// - Remove dim/dim-reset
+/// - Remove background colors
+/// - Replace style-off codes (\x1b[22m, \x1b[24m, etc.) with full reset \x1b[0m
+///   because skim only understands \x1b[0m for turning off styles
 fn cleanup_ansi(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
+    let mut in_dim = false;
 
     while let Some(ch) = chars.next() {
         if ch == '\x1b' {
@@ -82,20 +85,37 @@ fn cleanup_ansi(text: &str) -> String {
                     }
                 }
             }
-            // Filter out unwanted sequences
-            if seq == "\x1b[2m" || seq == "\x1b[22m" {
-                // Skip dim and dim-reset
+
+            // Skip dim on
+            if seq == "\x1b[2m" {
+                in_dim = true;
                 continue;
             }
+            // \x1b[22m = bold off AND dim off
+            if seq == "\x1b[22m" {
+                if in_dim {
+                    in_dim = false;
+                    continue; // was closing dim, skip
+                }
+                // Was closing bold → use full reset
+                result.push_str("\x1b[0m");
+                continue;
+            }
+            // Skip background colors \x1b[40m..\x1b[47m
             if seq.starts_with("\x1b[4") && seq.len() == 5 && seq.ends_with('m') {
-                // Skip background colors \x1b[40m..\x1b[47m
                 let digit = seq.chars().nth(3).unwrap_or('0');
-                if digit.is_ascii_digit() {
+                if digit >= '0' && digit <= '7' {
                     continue;
                 }
             }
+            // Skip extended background colors
             if seq.starts_with("\x1b[48;") {
-                // Skip extended background colors
+                continue;
+            }
+            // Replace style-off codes with full reset
+            // \x1b[24m = underline off, \x1b[23m = italic off, \x1b[29m = strikethrough off
+            if seq == "\x1b[24m" || seq == "\x1b[23m" || seq == "\x1b[29m" {
+                result.push_str("\x1b[0m");
                 continue;
             }
             result.push_str(&seq);
