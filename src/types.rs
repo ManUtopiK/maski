@@ -41,6 +41,7 @@ pub struct OptionalArg {
 #[derive(Debug, Deserialize, Clone)]
 pub struct NamedFlag {
     pub name: String,
+    #[allow(dead_code)]
     pub short: String,
     pub long: String,
     pub description: String,

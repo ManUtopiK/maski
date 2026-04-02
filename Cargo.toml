@@ -9,6 +9,9 @@ license = "MIT"
 keywords = ["mask", "maskfile", "interactive", "tui", "task-runner"]
 categories = ["command-line-utilities", "development-tools"]
 
+[build-dependencies]
+cc = "1"
+
 [dependencies]
 skim = "0.10"
 dialoguer = "0.11"

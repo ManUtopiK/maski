@@ -1,9 +1,11 @@
 use colored::*;
 use dialoguer::{Confirm, Input, Select};
 use skim::prelude::*;
+use std::collections::HashMap;
 use std::process;
 use std::sync::Arc;
 
+use crate::md4x;
 use crate::types::Command;
 
 struct ListItem {
@@ -17,7 +19,7 @@ impl SkimItem for ListItem {
     }
 
     fn preview(&self, _context: PreviewContext) -> ItemPreview {
-        ItemPreview::Text(self.preview_text.clone())
+        ItemPreview::AnsiText(self.preview_text.clone())
     }
 }
 
@@ -29,63 +31,31 @@ fn pad_lines(text: &str, margin: usize) -> String {
         .join("\n")
 }
 
-fn build_preview(cmd: &Command) -> String {
-    let mut preview = String::new();
-    preview.push('\n'); // top margin
+fn build_preview(cmd: &Command, breadcrumb: &[String], sections: &HashMap<String, String>) -> String {
+    // Build the lookup key matching maskfile_reader format
+    let mut key_parts: Vec<&str> = breadcrumb.iter().map(|s| s.as_str()).collect();
+    key_parts.push(&cmd.name);
+    let key = key_parts.join(" > ");
 
-    if !cmd.description.is_empty() {
-        preview.push_str(&format!("Description: {}\n", cmd.description));
-    }
-
-    if !cmd.subcommands.is_empty() {
-        let subs: Vec<&str> = cmd.subcommands.iter().map(|s| s.name.as_str()).collect();
-        preview.push_str(&format!("\nSubcommands: {}\n", subs.join(", ")));
-    }
-
-    if !cmd.required_args.is_empty() {
-        let args: Vec<&str> = cmd.required_args.iter().map(|a| a.name.as_str()).collect();
-        preview.push_str(&format!("\nRequired args: {}\n", args.join(", ")));
-    }
-
-    if !cmd.optional_args.is_empty() {
-        let args: Vec<&str> = cmd.optional_args.iter().map(|a| a.name.as_str()).collect();
-        preview.push_str(&format!("Optional args: {}\n", args.join(", ")));
-    }
-
-    let user_flags: Vec<_> = cmd
-        .named_flags
-        .iter()
-        .filter(|f| f.name != "verbose")
-        .collect();
-    if !user_flags.is_empty() {
-        preview.push_str("\nFlags:\n");
-        for f in &user_flags {
-            let flag_str = if f.short.is_empty() {
-                format!("  --{}", f.long)
-            } else {
-                format!("  -{}, --{}", f.short, f.long)
-            };
-            if f.description.is_empty() {
-                preview.push_str(&format!("{}\n", flag_str));
-            } else {
-                preview.push_str(&format!("{}  {}\n", flag_str, f.description));
-            }
+    let md = if let Some(section) = sections.get(&key) {
+        section.clone()
+    } else {
+        // Fallback: build from introspect data
+        let mut md = String::new();
+        if !cmd.description.is_empty() {
+            md.push_str(&format!("> {}\n\n", cmd.description));
         }
-    }
-
-    if let Some(ref script) = cmd.script {
-        preview.push_str(&format!("\nScript ({}):\n", script.executor));
-        preview.push_str("─────────────\n");
-        preview.push_str(&script.source);
-        if !script.source.ends_with('\n') {
-            preview.push('\n');
+        if let Some(ref script) = cmd.script {
+            md.push_str(&format!("```{}\n{}\n```\n", script.executor, script.source.trim_end()));
         }
-    }
+        md
+    };
 
-    pad_lines(&preview, 2)
+    let rendered = md4x::render_ansi(&md);
+    pad_lines(&rendered, 2)
 }
 
-fn build_items(commands: &[Command]) -> Vec<Arc<dyn SkimItem>> {
+fn build_items(commands: &[Command], breadcrumb: &[String], sections: &HashMap<String, String>) -> Vec<Arc<dyn SkimItem>> {
     commands
         .iter()
         .map(|cmd| {
@@ -96,7 +66,7 @@ fn build_items(commands: &[Command]) -> Vec<Arc<dyn SkimItem>> {
             };
             Arc::new(ListItem {
                 label,
-                preview_text: build_preview(cmd),
+                preview_text: build_preview(cmd, breadcrumb, sections),
             }) as Arc<dyn SkimItem>
         })
         .collect()
@@ -111,8 +81,8 @@ fn build_header(breadcrumb: &[String]) -> String {
     }
 }
 
-fn run_skim(commands: &[Command], breadcrumb: &[String], preview_pos: &str) -> Option<(usize, Key)> {
-    let items = build_items(commands);
+fn run_skim(commands: &[Command], breadcrumb: &[String], preview_pos: &str, sections: &HashMap<String, String>) -> Option<(usize, Key)> {
+    let items = build_items(commands, breadcrumb, sections);
     let header = build_header(breadcrumb);
     let preview_window = format!("{}:50%:wrap", preview_pos);
 
@@ -292,7 +262,7 @@ fn execute(cmd: &Command, breadcrumb: &[String], maskfile_arg: &Option<String>) 
     }
 }
 
-pub fn run(commands: &[Command], maskfile_arg: &Option<String>, preview_pos: &str) {
+pub fn run(commands: &[Command], maskfile_arg: &Option<String>, preview_pos: &str, sections: &HashMap<String, String>) {
     if !std::io::IsTerminal::is_terminal(&std::io::stdin()) {
         eprintln!("{} interactive mode requires a TTY", "ERROR:".red());
         process::exit(1);
@@ -308,7 +278,7 @@ pub fn run(commands: &[Command], maskfile_arg: &Option<String>, preview_pos: &st
     let mut breadcrumb: Vec<String> = vec![];
 
     loop {
-        let result = run_skim(current_commands, &breadcrumb, preview_pos);
+        let result = run_skim(current_commands, &breadcrumb, preview_pos, sections);
 
         let (index, key) = match result {
             Some(r) => r,

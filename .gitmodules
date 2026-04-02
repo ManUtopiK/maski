@@ -1,0 +1,3 @@
+[submodule "vendor/md4x"]
+	path = vendor/md4x
+	url = https://github.com/unjs/md4x

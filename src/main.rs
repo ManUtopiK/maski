@@ -3,6 +3,8 @@ use colored::*;
 use std::process;
 
 mod interactive;
+mod maskfile_reader;
+mod md4x;
 mod types;
 
 #[derive(Parser)]
@@ -49,5 +51,31 @@ fn main() {
         process::exit(1);
     });
 
-    interactive::run(&maskfile.commands, &cli.maskfile, &cli.preview);
+    // Read maskfile.md to extract full markdown sections
+    let maskfile_path = find_maskfile(&cli.maskfile).unwrap_or_else(|| {
+        eprintln!("{} no maskfile.md found", "ERROR:".red());
+        process::exit(1);
+    });
+    let maskfile_content = std::fs::read_to_string(&maskfile_path).unwrap_or_default();
+    let sections = maskfile_reader::extract_sections(&maskfile_content);
+
+    interactive::run(&maskfile.commands, &cli.maskfile, &cli.preview, &sections);
+}
+
+fn find_maskfile(explicit: &Option<String>) -> Option<String> {
+    if let Some(ref path) = explicit {
+        return Some(path.clone());
+    }
+    let mut dir = std::env::current_dir().ok()?;
+    loop {
+        for name in &["maskfile.md", "Maskfile.md"] {
+            let candidate = dir.join(name);
+            if candidate.exists() {
+                return Some(candidate.to_string_lossy().into_owned());
+            }
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
 }
