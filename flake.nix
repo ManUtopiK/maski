@@ -1,6 +1,11 @@
 {
   description = "maski — Interactive TUI for mask";
 
+  nixConfig = {
+    extra-substituters = [ "https://maski.cachix.org" ];
+    extra-trusted-public-keys = [ "maski.cachix.org-1:D5Ok9Mln7WxD7vm5ADYL92kTlrN6tB1y1V5Yq2UGmUw=" ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     md4x = {
@@ -22,7 +27,7 @@
         {
           default = pkgs.rustPlatform.buildRustPackage {
             pname = "maski";
-            version = "0.1.0";
+            version = "0.1.1";
             src = ./.;
 
             postUnpack = ''
