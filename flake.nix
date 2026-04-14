@@ -26,6 +26,7 @@
             src = ./.;
 
             postUnpack = ''
+              rm -rf $sourceRoot/vendor/md4x
               mkdir -p $sourceRoot/vendor
               cp -r ${md4x} $sourceRoot/vendor/md4x
             '';
