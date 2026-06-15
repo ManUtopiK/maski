@@ -7,8 +7,29 @@ pub fn extract_sections(content: &str) -> HashMap<String, String> {
     let mut current_name: Option<String> = None;
     let mut current_body = String::new();
     let mut breadcrumb: Vec<(u8, String)> = vec![];
+    // Track fenced code blocks: lines inside them (e.g. bash `# comment`) must
+    // never be parsed as headings, or they corrupt the breadcrumb.
+    let mut fence: Option<char> = None;
 
     for line in content.lines() {
+        if let Some(marker) = fence_marker(line) {
+            match fence {
+                Some(open) if open == marker => fence = None, // closing fence
+                Some(_) => {}                                 // different marker inside fence
+                None => fence = Some(marker),                 // opening fence
+            }
+            current_body.push_str(line);
+            current_body.push('\n');
+            continue;
+        }
+
+        // Inside a code block: accumulate verbatim, never parse as a heading.
+        if fence.is_some() {
+            current_body.push_str(line);
+            current_body.push('\n');
+            continue;
+        }
+
         if let Some((level, raw_name)) = parse_heading(line) {
             // Save previous section
             if let Some(name) = current_name.take() {
@@ -71,6 +92,19 @@ pub fn extract_sections(content: &str) -> HashMap<String, String> {
     }
 
     sections
+}
+
+/// Detect a fenced code block delimiter (``` or ~~~), returning its marker char.
+/// Markdown allows leading whitespace before the fence.
+fn fence_marker(line: &str) -> Option<char> {
+    let trimmed = line.trim_start();
+    if trimmed.starts_with("```") {
+        Some('`')
+    } else if trimmed.starts_with("~~~") {
+        Some('~')
+    } else {
+        None
+    }
 }
 
 fn parse_heading(line: &str) -> Option<(u8, String)> {
@@ -140,5 +174,62 @@ echo hey
 "#;
         let sections = extract_sections(content);
         assert!(sections.contains_key("parent > subcommand"));
+    }
+
+    // Regression: bash `# comment` lines inside a subcommand's code block were
+    // parsed as level-1 headings, clearing the breadcrumb. Subcommands that
+    // followed lost their parent prefix and overwrote same-named top-level
+    // commands (e.g. `vm > rebuild` collided with top-level `rebuild`).
+    #[test]
+    fn test_comments_in_code_block_dont_corrupt_breadcrumb() {
+        let content = r#"# Title
+
+## rebuild (client)
+
+> Top-level rebuild
+
+```bash
+echo "build and push"
+```
+
+## vm
+
+### browse (app)
+
+> Browse, with hash comments in the script
+
+```bash
+# 1. start the proxy
+# 2. resolve the domain
+# 3. open the browser
+echo browse
+```
+
+### rebuild (name)
+
+> Stop + clean + build + run
+
+```bash
+echo "vm rebuild"
+```
+"#;
+        let sections = extract_sections(content);
+
+        // Both rebuilds must coexist under distinct keys.
+        assert!(sections.contains_key("rebuild"), "top-level rebuild missing");
+        assert!(sections.contains_key("vm > rebuild"), "vm > rebuild missing");
+        assert!(sections.contains_key("vm > browse"), "vm > browse missing");
+
+        // The top-level rebuild must NOT be overwritten by the vm subcommand.
+        assert!(
+            sections["rebuild"].contains("Top-level rebuild"),
+            "top-level rebuild was clobbered: {:?}",
+            sections["rebuild"]
+        );
+        assert!(sections["vm > rebuild"].contains("Stop + clean + build + run"));
+
+        // The hash comments must stay in the browse body, not become headings.
+        assert!(sections["vm > browse"].contains("# 1. start the proxy"));
+        assert!(!sections.contains_key("1. start the proxy"));
     }
 }
