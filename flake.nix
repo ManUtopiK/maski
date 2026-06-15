@@ -27,7 +27,7 @@
         {
           default = pkgs.rustPlatform.buildRustPackage {
             pname = "maski";
-            version = "0.1.1";
+            version = "0.1.2";
             src = ./.;
 
             postUnpack = ''
@@ -36,7 +36,10 @@
               cp -r ${md4x} $sourceRoot/vendor/md4x
             '';
 
-            cargoHash = "sha256-CnoXPGn0n8SiAkEFZq6xrbiNDx/jOAIh2/w42l1Zfb0=";
+            # Vendor straight from the lockfile so the hash never goes stale on
+            # a version bump (a hardcoded cargoHash must be regenerated every time
+            # Cargo.lock changes).
+            cargoLock.lockFile = ./Cargo.lock;
 
             nativeBuildInputs = [ pkgs.pkg-config ];
 

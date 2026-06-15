@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   top-level `rebuild`, so the preview showed the wrong command. The section
   extractor is now fence-aware.
 
+### Changed
+
+- Nix packaging vendors dependencies from `Cargo.lock` (`cargoLock.lockFile`)
+  instead of a hardcoded `cargoHash`, so the build no longer breaks on every
+  version bump.
+
 ## [0.1.1] - 2026-04-14
 
 ### Added
