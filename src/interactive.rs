@@ -52,7 +52,9 @@ fn build_preview(cmd: &Command, breadcrumb: &[String], sections: &HashMap<String
     };
 
     let rendered = md4x::render_ansi(&md);
-    pad_lines(&rendered, 2)
+    // Leading blank line so skim's preview scroll indicator (e.g. "1/13",
+    // drawn top-right) does not overlap the first line of content.
+    format!("\n{}", pad_lines(&rendered, 2))
 }
 
 fn build_items(commands: &[Command], breadcrumb: &[String], sections: &HashMap<String, String>) -> Vec<Arc<dyn SkimItem>> {
