@@ -27,7 +27,7 @@
         {
           default = pkgs.rustPlatform.buildRustPackage {
             pname = "maski";
-            version = "0.1.2";
+            version = "0.1.3";
             src = ./.;
 
             postUnpack = ''
