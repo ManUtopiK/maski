@@ -25,7 +25,27 @@ nix run github:ManUtopiK/maski
 nix profile install github:ManUtopiK/maski
 ```
 
-Or add it as a flake input in your NixOS/home-manager configuration.
+Or add it as a flake input. Two things matter to get binary-cache hits from
+[maski.cachix.org](https://maski.cachix.org) — otherwise maski recompiles from source:
+
+1. **Don't make maski follow your `nixpkgs`.** maski is cached against its own
+   pinned nixpkgs; `inputs.maski.inputs.nixpkgs.follows = "nixpkgs"` changes the
+   derivation hash and misses the cache.
+2. **Declare the cache yourself.** A flake's `nixConfig` is only honored for the
+   top-level flake, not for inputs, so consumers must add it:
+
+```nix
+# flake.nix
+inputs.maski.url = "github:ManUtopiK/maski";   # no `follows` on nixpkgs
+
+# NixOS configuration (or nix.conf)
+nix.settings = {
+  extra-substituters = [ "https://maski.cachix.org" ];
+  extra-trusted-public-keys = [
+    "maski.cachix.org-1:D5Ok9Mln7WxD7vm5ADYL92kTlrN6tB1y1V5Yq2UGmUw="
+  ];
+};
+```
 
 ### Cargo
 
