@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Arguments are forwarded to `mask`, so `maski` is a drop-in replacement:
+  `maski build --release` runs `mask build --release`, `maski help` runs
+  `mask help`.
+- Naming a command that only holds subcommands (no script of its own) opens the
+  TUI at that level — `maski db` browses `db > migrate, seed`. `←` / `Esc` walk
+  back up to the root as usual.
+- `examples/maskfile.md`, a sample maskfile exercising subcommands, prompted
+  arguments, flags, and the markdown features the preview panel renders.
+
 ## [0.1.2] - 2026-06-15
 
 ### Fixed

@@ -63,6 +63,32 @@ maski --maskfile ./ops.md      # use a specific maskfile
 maski --preview right          # preview panel on the right (default: down)
 ```
 
+With arguments, `maski` is a drop-in replacement for `mask` — everything is forwarded as-is:
+
+```bash
+maski build --release          # runs `mask build --release`
+maski help                     # runs `mask help`
+maski --maskfile ./ops.md deploy
+```
+
+One exception: naming a command that only groups subcommands (no script of its own) opens the TUI at that level instead of printing mask's help. Navigation still works from there — `←` / `Esc` walk back up to the root.
+
+Given a `maskfile.md` with a `## db` section holding `### migrate` and `### seed`:
+
+```bash
+maski db                       # browse db > migrate, seed
+maski db migrate               # runs `mask db migrate` directly
+```
+
+### Try it
+
+[`examples/maskfile.md`](examples/maskfile.md) is a sample maskfile covering subcommands, prompted arguments, flags, and the markdown the preview panel renders (tables, alerts, MDC components, task lists). Every task only echoes, so nothing can go wrong:
+
+```bash
+maski --maskfile examples/maskfile.md        # browse everything
+maski --maskfile examples/maskfile.md db     # open the TUI on the db group
+```
+
 ### Navigation
 
 | Key | Action |
