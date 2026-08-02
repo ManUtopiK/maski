@@ -264,7 +264,13 @@ fn execute(cmd: &Command, breadcrumb: &[String], maskfile_arg: &Option<String>) 
     }
 }
 
-pub fn run(commands: &[Command], maskfile_arg: &Option<String>, preview_pos: &str, sections: &HashMap<String, String>) {
+pub fn run(
+    commands: &[Command],
+    maskfile_arg: &Option<String>,
+    preview_pos: &str,
+    sections: &HashMap<String, String>,
+    start_path: &[String],
+) {
     if !std::io::IsTerminal::is_terminal(&std::io::stdin()) {
         eprintln!("{} interactive mode requires a TTY", "ERROR:".red());
         process::exit(1);
@@ -278,6 +284,19 @@ pub fn run(commands: &[Command], maskfile_arg: &Option<String>, preview_pos: &st
     let mut stack: Vec<(&[Command], Vec<String>)> = vec![];
     let mut current_commands: &[Command] = commands;
     let mut breadcrumb: Vec<String> = vec![];
+
+    // Descend to the requested command, keeping the levels above on the stack
+    // so `←` / `Esc` walk back up to the root as usual.
+    for name in start_path {
+        match current_commands.iter().find(|c| &c.name == name) {
+            Some(cmd) if !cmd.subcommands.is_empty() => {
+                stack.push((current_commands, breadcrumb.clone()));
+                breadcrumb.push(cmd.name.clone());
+                current_commands = &cmd.subcommands;
+            }
+            _ => break,
+        }
+    }
 
     loop {
         let result = run_skim(current_commands, &breadcrumb, preview_pos, sections);
