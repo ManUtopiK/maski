@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so every maskfile was affected. The bug is in md4x's ANSI renderer; `build.rs`
   patches a copy of it in `OUT_DIR` until the fix lands upstream.
 
+## [0.1.3] - 2026-06-16
+
+### Fixed
+
+- Preview starts with a blank line so skim's scroll indicator, drawn in the
+  top-right corner of the panel, no longer overlaps the first line of content.
+
 ## [0.1.2] - 2026-06-15
 
 ### Fixed
@@ -71,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README with screenshot.
 
 [0.2.0]: https://github.com/ManUtopiK/maski/compare/v0.1.3...v0.2.0
+[0.1.3]: https://github.com/ManUtopiK/maski/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/ManUtopiK/maski/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/ManUtopiK/maski/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ManUtopiK/maski/releases/tag/v0.1.0
