@@ -8,17 +8,7 @@ mod md4x;
 mod types;
 
 #[derive(Parser)]
-#[command(
-    name = "maski",
-    version,
-    about = "Interactive TUI for mask taskfiles",
-    after_help = "Run `maski` with no arguments to browse tasks interactively.\n\
-                  Naming a command that only holds subcommands opens the TUI there:\n\
-                  \n    maski db                browse the `db` subcommands\n\
-                  \nAnything else is forwarded to `mask` as-is:\n\
-                  \n    maski build --release   runs `mask build --release`\
-                  \n    maski help              runs `mask help`"
-)]
+#[command(name = "maski", version, about = "Interactive TUI for mask taskfiles")]
 struct Cli {
     /// Path to a specific maskfile
     #[arg(long)]
@@ -34,7 +24,23 @@ struct Cli {
 }
 
 fn main() {
-    let cli = Cli::parse();
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        // Hand `--help` over to mask so the task list shows up, then append
+        // what maski adds on top of it.
+        Err(err) if err.kind() == clap::error::ErrorKind::DisplayHelp => {
+            print_help();
+            process::exit(0);
+        }
+        Err(err) => err.exit(),
+    };
+
+    // `maski help` is the same request as `maski --help`. Anything more
+    // specific (`maski help build`) belongs to mask alone.
+    if cli.args == ["help"] {
+        print_help();
+        process::exit(0);
+    }
 
     // Call mask --introspect to get the JSON AST
     let mut cmd = process::Command::new("mask");
@@ -102,6 +108,53 @@ fn resolve_group<'a>(commands: &'a [types::Command], args: &[String]) -> Option<
     }
 
     found.filter(|cmd| cmd.script.is_none() && !cmd.subcommands.is_empty())
+}
+
+/// Print `mask --help` — task list included — followed by maski's own additions.
+fn print_help() {
+    let mut cmd = process::Command::new("mask");
+    if let Some(ref path) = maskfile_from_raw_args() {
+        cmd.arg("--maskfile").arg(path);
+    }
+    cmd.arg("--help");
+
+    if cmd.status().is_err() {
+        eprintln!("{} failed to run `mask --help`", "ERROR:".red());
+        eprintln!("Is mask installed and in your PATH?");
+    }
+
+    // Same two-column layout as mask's own sections. Pad before coloring:
+    // the escape codes would otherwise count towards the width.
+    let row = |item: &str, desc: &str| {
+        let pad = " ".repeat(29_usize.saturating_sub(item.len()));
+        println!("    {}{}{}", item.green(), pad, desc);
+    };
+
+    println!("\n{}", "MASKI OPTIONS:".cyan());
+    row(
+        "    --preview <position>",
+        "Preview panel position: down (default), right, up, left",
+    );
+
+    println!("\n{}", "MASKI USAGE:".cyan());
+    row("maski", "Browse tasks interactively");
+    row("maski <group>", "Browse a group's subcommands, e.g. `maski db`");
+    row("maski <task> [args]...", "Forwarded to mask, like everything else");
+}
+
+/// Pull `--maskfile <path>` out of the raw argv. The help path runs before clap
+/// has produced a parsed `Cli`, so it cannot read it from there.
+fn maskfile_from_raw_args() -> Option<String> {
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if let Some(path) = arg.strip_prefix("--maskfile=") {
+            return Some(path.to_string());
+        }
+        if arg == "--maskfile" {
+            return args.next();
+        }
+    }
+    None
 }
 
 /// Forward every argument to `mask`, inheriting stdio and exit code.
