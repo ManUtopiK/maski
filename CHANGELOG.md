@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `examples/maskfile.md`, a sample maskfile exercising subcommands, prompted
   arguments, flags, and the markdown features the preview panel renders.
 
+### Changed
+
+- `maski --help` (and the bare `maski help`) now prints `mask --help`, task list
+  included, followed by maski's own options — instead of listing maski's flags
+  alone.
+
+### Fixed
+
+- Preview no longer collapses the first item of a list nested in a *tight* list
+  item onto its parent's line. mask's `**OPTIONS**` blocks are written that way,
+  so every maskfile was affected. The bug is in md4x's ANSI renderer; `build.rs`
+  patches a copy of it in `OUT_DIR` until the fix lands upstream.
+
 ## [0.1.2] - 2026-06-15
 
 ### Fixed

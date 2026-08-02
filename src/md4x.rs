@@ -128,3 +128,50 @@ fn cleanup_ansi(text: &str) -> String {
 
     result
 }
+
+
+#[cfg(test)]
+mod tests {
+    /// Drop the escape sequences so assertions read like the terminal output.
+    fn plain(markdown: &str) -> String {
+        let rendered = super::render_ansi(markdown);
+        let mut out = String::with_capacity(rendered.len());
+        let mut chars = rendered.chars();
+        while let Some(ch) = chars.next() {
+            if ch != '\x1b' {
+                out.push(ch);
+                continue;
+            }
+            for esc in chars.by_ref() {
+                if esc.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+        }
+        out
+    }
+
+    // Guards the md4x patch applied by build.rs: without it, the first item of
+    // a list nested in a *tight* list item lands on the parent's line — which
+    // is exactly how mask's `**OPTIONS**` blocks are written.
+    #[test]
+    fn nested_list_in_tight_item_starts_on_its_own_line() {
+        assert_eq!(
+            plain("- release\n  - flags: -r\n  - type: boolean\n"),
+            "* release\n  * flags: -r\n  * type: boolean\n\n"
+        );
+    }
+
+    #[test]
+    fn nested_list_in_loose_item_is_unchanged() {
+        assert_eq!(
+            plain("- release\n  - flags: -r\n\n- jobs\n  - type: string\n"),
+            "* release\n  * flags: -r\n\n* jobs\n  * type: string\n\n"
+        );
+    }
+
+    #[test]
+    fn flat_list_is_unchanged() {
+        assert_eq!(plain("- a\n- b\n"), "* a\n* b\n");
+    }
+}
