@@ -20,22 +20,19 @@ on:
     branches: [main]
   pull_request:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: cachix/install-nix-action@v25
+      - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
       # Must come before the build: the action pushes the paths that appear in
       # the store while it is active.
-      - uses: cachix/cachix-action@v14
+      - uses: cachix/cachix-action@v17
         with:
           name: maski
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
